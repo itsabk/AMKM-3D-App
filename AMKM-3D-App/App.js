@@ -1,0 +1,277 @@
+import React from "react";
+import { View, Text, TouchableOpacity, StatusBar } from "react-native";
+import {
+  Scene,
+  Mesh,
+  PerspectiveCamera,
+  Object3D,
+  AmbientLight,
+  SpotLight,
+  PointLight,
+} from "three";
+import ExpoTHREE, { Renderer, TextureLoader, THREE } from "expo-three";
+import { GLView } from "expo-gl";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
+import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
+import { Asset } from "expo-asset";
+
+global.THREE = global.THREE || THREE;
+
+const App = () => {
+  let model = new Object3D();
+  let textureIndex = 1;
+  let changeTexture = false;
+  //variable to control the rotation of the model
+  let rotation = {
+    x: 0,
+    y: 0,
+    z: 0,
+  };
+  //variable to store touch coordinates
+  let touchData = {
+    startX: 0,
+    startY: 0,
+    endX: 0,
+    endY: 0,
+    startTime: 0,
+    endTime: 0,
+    deltaX: 0,
+    deltaY: 0,
+  };
+
+  const onContextCreate = async (gl) => {
+    /// Set up the scene
+    const renderer = new Renderer({ gl });
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(
+      75,
+      gl.drawingBufferWidth / gl.drawingBufferHeight,
+      0.1,
+      1000
+    );
+    camera.position.z = 5;
+
+    const ambientLight = new AmbientLight(0x101010);
+    scene.add(ambientLight);
+
+    const pointLight = new PointLight(0xffffff, 2, 1000, 1);
+    pointLight.position.set(0, 200, 200);
+    scene.add(pointLight);
+
+    const spotLight = new SpotLight(0xffffff, 0.5);
+    spotLight.position.set(0, 500, 100);
+    spotLight.lookAt(scene.position);
+    scene.add(spotLight);
+
+    /// Load textures
+    const texture1 = await ExpoTHREE.loadAsync(
+      require("./assets/Phone/iPhone_DefaultMaterial_Diffuse.png")
+    );
+    const texture2 = await ExpoTHREE.loadAsync(
+      require("./assets/Phone/iPhone_DefaultMaterial_DiffuseBlue.png")
+    );
+    const texture3 = await ExpoTHREE.loadAsync(
+      require("./assets/Phone/iPhone_DefaultMaterial_DiffuseRed.png")
+    );
+    const texture4 = await ExpoTHREE.loadAsync(
+      require("./assets/Phone/iPhone_DefaultMaterial_DiffuseGold.png")
+    );
+
+    let texture = texture1;
+    textureIndex = 1;
+
+    // Load material and model
+    const obj = await Asset.fromModule(
+      require("./assets/Phone/iphone_11_pro_max.obj")
+    );
+    const mtl = await Asset.fromModule(
+      require("./assets/Phone/iphone_11_pro_max.mtl")
+    );
+    const objLoader = new OBJLoader();
+    const mtlLoader = new MTLLoader();
+    mtlLoader.load(mtl.uri, function (materials) {
+      console.log("materials loaded");
+      // configure the materials
+      materials.preload();
+      objLoader.setMaterials(materials);
+      objLoader.load(obj.uri, function (object) {
+        // configure the model
+        console.log("object loaded");
+        model = object;
+        model.position.set(0, 0.5, 0);
+        model.scale.set(0.03, 0.03, 0.03);
+
+        //apply texture to model
+        model.traverse((child) => {
+          if (child instanceof Mesh) {
+            child.material.map = texture;
+            child.material.needsUpdate = true;
+          }
+        });
+
+        // add the model to the scene
+        scene.add(model);
+      });
+    });
+
+    //render the scene
+    const render = () => {
+      requestAnimationFrame(render);
+      if (model) {
+        ///  check if texture needs to be changed
+        if (changeTexture) {
+          // set texture as per the index
+          switch (textureIndex) {
+            case 1:
+              texture = texture1;
+              break;
+            case 2:
+              texture = texture2;
+              break;
+            case 3:
+              texture = texture3;
+              break;
+            case 4:
+              texture = texture4;
+              break;
+            default:
+              texture = texture1;
+              break;
+          }
+          // apply texture to model
+          model.traverse((child) => {
+            if (child instanceof Mesh) {
+              child.material.map = texture;
+            }
+          });
+          changeTexture = false;
+        }
+      }
+
+      renderer.render(scene, camera);
+      gl.endFrameEXP();
+    };
+    render();
+  };
+
+  return (
+    <View style={{ flex: 1, marginTop: StatusBar.currentHeight }}>
+      {/* Title: Iphone 11 Pro Max */}
+      <Text
+        style={{
+          fontWeight: "bold",
+          fontSize: 25,
+          color: "white",
+          marginTop: 10,
+          marginLeft: 10,
+          marginRight: 10,
+          textAlign: "center",
+          backgroundColor: "#262626",
+          textShadowColor: "black",
+          borderRadius: 10,
+        }}
+      >
+        Iphone 11 Pro Max
+      </Text>
+
+      {/* Color Options */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 20,
+        }}
+      >
+        <Text
+          style={{
+            fontWeight: "bold",
+            fontSize: 15,
+          }}
+        >
+          Choose color:{" "}
+        </Text>
+        {/* Black */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: "#262626",
+            width: 50,
+            height: 50,
+            borderRadius: 100,
+            margin: 10,
+          }}
+          onPress={() => {
+            textureIndex = 1;
+            changeTexture = true;
+          }}
+        ></TouchableOpacity>
+        {/* Blue */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: "#9BB5CE",
+            width: 50,
+            height: 50,
+            borderRadius: 100,
+            margin: 10,
+          }}
+          onPress={() => {
+            textureIndex = 2;
+            changeTexture = true;
+          }}
+        ></TouchableOpacity>
+        {/* Red */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: "#BA0C2E",
+            width: 50,
+            height: 50,
+            borderRadius: 100,
+            margin: 10,
+          }}
+          onPress={() => {
+            textureIndex = 3;
+            changeTexture = true;
+          }}
+        ></TouchableOpacity>
+        {/* Gold */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: "#F9E5C9",
+            width: 50,
+            height: 50,
+            borderRadius: 100,
+            margin: 10,
+          }}
+          onPress={() => {
+            textureIndex = 4;
+            changeTexture = true;
+          }}
+        ></TouchableOpacity>
+      </View>
+
+      {/* 3D Model Rendering View */}
+      <GLView
+        onContextCreate={onContextCreate}
+        style={{ width: "100%", height: "100%" }}
+        // Model rotation on touch
+        onTouchStart={(event) => {
+          touchData.startX = event.nativeEvent.locationX;
+          touchData.startY = event.nativeEvent.locationY;
+          touchData.startTime = event.nativeEvent.timestamp;
+        }}
+        onTouchMove={(event) => {
+          touchData.endX = event.nativeEvent.locationX;
+          touchData.endY = event.nativeEvent.locationY;
+          touchData.endTime = event.nativeEvent.timestamp;
+          touchData.deltaX = touchData.endX - touchData.startX;
+          touchData.deltaY = touchData.endY - touchData.startY;
+          rotation.x += touchData.deltaX * 0.0005;
+          rotation.y += touchData.deltaY * 0.0005;
+          model.rotation.set(rotation.y, rotation.x, rotation.z);
+        }}
+      />
+    </View>
+  );
+};
+
+export default App;
