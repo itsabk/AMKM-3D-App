@@ -2,6 +2,8 @@
 
 An interactive app that displays Iphone 11 Pro Max in various colors.
 
+![3D-App](https://user-images.githubusercontent.com/25406698/180666674-ddbe0a64-8ac8-49a3-9990-d8c74e80067d.gif)
+
 
 ## Setup instructions
 
