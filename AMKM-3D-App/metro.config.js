@@ -4,6 +4,18 @@ const { getDefaultConfig } = require("expo/metro-config");
 // module.exports = getDefaultConfig(__dirname);
 module.exports = {
   resolver: {
-    assetExts: ["db", "mp3", "ttf", "obj", "png", "jpg", "mtl", "glb", "gltf"],
+    assetExts: [
+      "db",
+      "mp3",
+      "ttf",
+      "obj",
+      "png",
+      "jpg",
+      "mtl",
+      "glb",
+      "gltf",
+      "json",
+      "typeface.json",
+    ],
   },
 };

@@ -8,20 +8,23 @@ import {
   AmbientLight,
   SpotLight,
   PointLight,
+  MeshBasicMaterial,
 } from "three";
 import ExpoTHREE, { Renderer, TextureLoader, THREE } from "expo-three";
 import { GLView } from "expo-gl";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
+import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry";
+import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
 import { Asset } from "expo-asset";
 
 global.THREE = global.THREE || THREE;
 
 const App = () => {
+  let isLoading = true;
   let model = new Object3D();
   let textureIndex = 1;
   let changeTexture = false;
-  //variable to control the rotation of the model
   let rotation = {
     x: 0,
     y: 0,
@@ -39,6 +42,7 @@ const App = () => {
     deltaY: 0,
   };
 
+  // function to load the model
   const onContextCreate = async (gl) => {
     /// Set up the scene
     const renderer = new Renderer({ gl });
@@ -49,12 +53,14 @@ const App = () => {
       0.1,
       1000
     );
+
+    // Set the camera position
     camera.position.z = 5;
 
     const ambientLight = new AmbientLight(0x101010);
     scene.add(ambientLight);
 
-    const pointLight = new PointLight(0xffffff, 2, 1000, 1);
+    const pointLight = new PointLight(0xffffff, 2, 1500, 1);
     pointLight.position.set(0, 200, 200);
     scene.add(pointLight);
 
@@ -62,6 +68,39 @@ const App = () => {
     spotLight.position.set(0, 500, 100);
     spotLight.lookAt(scene.position);
     scene.add(spotLight);
+
+    // add light from bottom of screen
+    const light = new THREE.DirectionalLight(0xffffff, 0.5);
+    light.position.set(0, -1, 0);
+    scene.add(light);
+
+    // create a loading animation
+    const loading = new Object3D();
+    // load font
+    const fontLoader = new FontLoader();
+    fontLoader.load(
+      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+      (font) => {
+        // create a text geometry
+        const textGeometry = new TextGeometry("Loading...", {
+          font: font,
+          size: 0.25,
+          height: 0.1,
+        });
+        // create a text mesh
+        const textMesh = new Mesh(
+          textGeometry,
+          new MeshBasicMaterial({ color: 0x262626 })
+        );
+        // set the text mesh position
+        textMesh.position.set(0, 0, 0);
+        // add the text mesh to the loading object
+        loading.add(textMesh);
+      }
+    );
+    loading.position.set(-0.6, 0.5, 0);
+    scene.add(loading);
+    isLoading = true;
 
     /// Load textures
     const texture1 = await ExpoTHREE.loadAsync(
@@ -77,6 +116,7 @@ const App = () => {
       require("./assets/Phone/iPhone_DefaultMaterial_DiffuseGold.png")
     );
 
+    // set default texture
     let texture = texture1;
     textureIndex = 1;
 
@@ -90,13 +130,11 @@ const App = () => {
     const objLoader = new OBJLoader();
     const mtlLoader = new MTLLoader();
     mtlLoader.load(mtl.uri, function (materials) {
-      console.log("materials loaded");
       // configure the materials
       materials.preload();
       objLoader.setMaterials(materials);
       objLoader.load(obj.uri, function (object) {
         // configure the model
-        console.log("object loaded");
         model = object;
         model.position.set(0, 0.5, 0);
         model.scale.set(0.03, 0.03, 0.03);
@@ -111,12 +149,19 @@ const App = () => {
 
         // add the model to the scene
         scene.add(model);
+        scene.remove(loading);
+        isLoading = false;
       });
     });
 
     //render the scene
     const render = () => {
       requestAnimationFrame(render);
+      // show loading animation while model is loading
+      if (isLoading) {
+        loading.rotation.x += 0.1;
+      }
+      // check if the model is loaded
       if (model) {
         ///  check if texture needs to be changed
         if (changeTexture) {
@@ -147,7 +192,6 @@ const App = () => {
           changeTexture = false;
         }
       }
-
       renderer.render(scene, camera);
       gl.endFrameEXP();
     };
@@ -173,7 +217,6 @@ const App = () => {
       >
         Iphone 11 Pro Max
       </Text>
-
       {/* Color Options */}
       <View
         style={{
@@ -191,7 +234,7 @@ const App = () => {
         >
           Choose color:{" "}
         </Text>
-        {/* Black */}
+        {/* Black Button*/}
         <TouchableOpacity
           style={{
             backgroundColor: "#262626",
@@ -205,7 +248,7 @@ const App = () => {
             changeTexture = true;
           }}
         ></TouchableOpacity>
-        {/* Blue */}
+        {/* Blue Button */}
         <TouchableOpacity
           style={{
             backgroundColor: "#9BB5CE",
@@ -219,7 +262,7 @@ const App = () => {
             changeTexture = true;
           }}
         ></TouchableOpacity>
-        {/* Red */}
+        {/* Red Button */}
         <TouchableOpacity
           style={{
             backgroundColor: "#BA0C2E",
@@ -233,7 +276,7 @@ const App = () => {
             changeTexture = true;
           }}
         ></TouchableOpacity>
-        {/* Gold */}
+        {/* Gold Button */}
         <TouchableOpacity
           style={{
             backgroundColor: "#F9E5C9",
@@ -249,11 +292,13 @@ const App = () => {
         ></TouchableOpacity>
       </View>
 
-      {/* 3D Model Rendering View */}
+      {/* Render the scene */}
       <GLView
+        style={{
+          flex: 1,
+        }}
         onContextCreate={onContextCreate}
-        style={{ width: "100%", height: "100%" }}
-        // Model rotation on touch
+        // Rotate model on touch
         onTouchStart={(event) => {
           touchData.startX = event.nativeEvent.locationX;
           touchData.startY = event.nativeEvent.locationY;
@@ -265,9 +310,11 @@ const App = () => {
           touchData.endTime = event.nativeEvent.timestamp;
           touchData.deltaX = touchData.endX - touchData.startX;
           touchData.deltaY = touchData.endY - touchData.startY;
-          rotation.x += touchData.deltaX * 0.0005;
-          rotation.y += touchData.deltaY * 0.0005;
+          rotation.x += touchData.deltaX * 0.01;
+          rotation.y += touchData.deltaY * 0.01;
           model.rotation.set(rotation.y, rotation.x, rotation.z);
+          touchData.startX = touchData.endX;
+          touchData.startY = touchData.endY;
         }}
       />
     </View>
